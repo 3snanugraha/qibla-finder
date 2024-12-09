@@ -1,10 +1,15 @@
 {
   "expo": {
-    "name": "chordpedia-mobile",
-    "slug": "chordpedia-mobile",
+    "name": "Qibla Finder",
+    "slug": "qibla-finder",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/kaaba_bg.png",
+    "splash": {
+      "image": "./assets/images/kaaba_bg.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a237e"
+    },
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,24 +18,23 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "foregroundImage": "./assets/images/kaaba_bg.png",
+        "backgroundColor": "#1a237e"
+      },
+      "package": "com.x3snanugrahaa.qiblafinder"
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/kaaba_bg.png"
     },
     "plugins": [
       "expo-router",
       [
-        "expo-splash-screen",
+        "react-native-google-mobile-ads",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "androidAppId": "ca-app-pub-2147056952925982~7010556129",
+          "iosAppId": "ca-app-pub-2147056952925982~7010556129"
         }
       ]
     ],

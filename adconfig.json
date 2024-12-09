@@ -1,0 +1,37 @@
+{
+    "ads": {
+      "enabled": true,
+      "testMode": true,
+      "adUnits": {
+        "ios": {
+          "banner": {
+          "enabled" : "true",
+          "unitId" : "ca-app-pub-2147056952925982/2963499908"
+          },
+          "interstitial": {
+          "enabled" : "true",
+          "unitId" : "ca-app-pub-2147056952925982/8926273023"
+          },
+          "appOpen": {
+          "enabled" : "true",
+          "unitId" : "ca-app-pub-2147056952925982/7613191359"
+          }
+        },
+        "android": {
+          "banner": {
+          "enabled" : "true",
+          "unitId" : "ca-app-pub-2147056952925982/2963499908"
+          },
+          "interstitial": {
+          "enabled" : "true",
+          "unitId" : "ca-app-pub-2147056952925982/8926273023"
+          },
+          "appOpen": {
+          "enabled" : "true",
+          "unitId" : "ca-app-pub-2147056952925982/7613191359"
+          }
+        }
+      }
+    }
+  }
+  
