@@ -1,12 +1,10 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, Text, View, Dimensions, Image, ScrollView } from 'react-native';
 import { Magnetometer, Gyroscope } from 'expo-sensors';
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import BannerAds from '@/components/bannerAds';
-import { Audio } from 'expo-av';
-
 
 export default function QiblaCompass() {
   const [magnetometer, setMagnetometer] = useState(0);
@@ -15,11 +13,55 @@ export default function QiblaCompass() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isFlat, setIsFlat] = useState(true);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const lastPlayTime = useRef(0);
+
+  const getMagneticDeclination = (lat: number, lng: number): number => {
+    const year = new Date().getFullYear();
+    const baseYear = 2020;
+    const yearFraction = (year - baseYear);
+    
+    if (lng >= 90 && lng <= 150 && lat >= -10 && lat <= 10) {
+      // Southeast Asia region
+      return 0.5 + (yearFraction * 0.08);
+    } else if (lng >= 30 && lng <= 50 && lat >= 15 && lat <= 30) {
+      // Middle East region
+      return 2.5 + (yearFraction * 0.12);
+    }
+    
+    return 0;
+  };
+
   // Kaaba coordinates
   const KAABA_LAT = 21.422487;
   const KAABA_LNG = 39.826206;
+
+  const toRadians = (degrees: number): number => {
+    return degrees * (Math.PI / 180);
+  };
+
+  const toDegrees = (radians: number): number => {
+    return radians * (180 / Math.PI);
+  };
+
+  const calculateQiblaDirection = (latitude: number, longitude: number) => {
+    const lat1 = toRadians(latitude);
+    const lng1 = toRadians(longitude);
+    const lat2 = toRadians(KAABA_LAT);
+    const lng2 = toRadians(KAABA_LNG);
+
+    const dL = lng2 - lng1;
+    const cosLat2 = Math.cos(lat2);
+    const sinDL = Math.sin(dL);
+    const cosLat1 = Math.cos(lat1);
+    const sinLat1 = Math.sin(lat1);
+    const sinLat2 = Math.sin(lat2);
+
+    const y = sinDL * cosLat2;
+    const x = (cosLat1 * sinLat2) - (sinLat1 * cosLat2 * Math.cos(dL));
+    let bearing = Math.atan2(y, x);
+    bearing = toDegrees(bearing);
+
+    return (bearing + 360) % 360;
+  };
 
   useEffect(() => {
     let magSubscription: { remove: () => void; };
@@ -27,20 +69,17 @@ export default function QiblaCompass() {
 
     (async () => {
       try {
-        // Request permissions
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           setErrorMsg('Permission to access location was denied');
           return;
         }
 
-        // Get current location
         let currentLocation = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High
         });
         setLocation(currentLocation);
 
-        // Calculate Qibla direction
         if (currentLocation) {
           const qibla = calculateQiblaDirection(
             currentLocation.coords.latitude,
@@ -49,25 +88,16 @@ export default function QiblaCompass() {
           setQiblaDirection(qibla);
         }
 
-        // Start magnetometer updates with higher frequency
         Magnetometer.setUpdateInterval(100);
         magSubscription = Magnetometer.addListener(data => {
           let angle = Math.atan2(data.y, data.x) * (180 / Math.PI);
           angle = (angle < 0) ? angle + 360 : angle;
           setMagnetometer(angle);
-          
-          // Check accuracy and play sound here instead of in getQiblaAngle
-          const qiblaAngle = ((qiblaDirection - angle + 360) % 360);
-          if (Math.abs(qiblaAngle - 180) <= 5) {
-            playAccurateSound();
-          }
         });
 
-        // Start gyroscope updates
         Gyroscope.setUpdateInterval(100);
         gyroSubscription = Gyroscope.addListener(data => {
           setGyroscope(data);
-          // Check if device is relatively flat
           setIsFlat(Math.abs(data.x) < 0.1 && Math.abs(data.y) < 0.1);
         });
 
@@ -82,82 +112,33 @@ export default function QiblaCompass() {
     };
   }, []);
 
-  // Load sound when component mounts
-  useEffect(() => {
-    async function loadSound() {
-      try {
-        // Request audio permission
-        await Audio.requestPermissionsAsync();
-        // Set audio mode
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: true,
-          shouldDuckAndroid: false,
-        });
-        
-        // Load default system sound
-        const { sound } = await Audio.Sound.createAsync(
-          require('@/assets/sound.wav') // Add your sound file here
-        );
-        setSound(sound);
-      } catch (error) {
-        console.log('Error loading sound:', error);
-      }
-    }
-    loadSound();
-    return () => {
-      sound?.unloadAsync();
-    };
-  }, []);
-
-  const playAccurateSound = async () => {
-    const now = Date.now();
-    if (now - lastPlayTime.current > 4000) { // Changed to 4 seconds
-      try {
-        console.log('Playing sound...'); // Debug log
-        await sound?.playAsync();
-        lastPlayTime.current = now;
-      } catch (error) {
-        console.log('Error playing sound:', error);
-      }
-    }
-  };
-  
-
-  const calculateQiblaDirection = (latitude: number, longitude: number) => {
-    // Convert to radians
-    const lat1 = latitude * (Math.PI / 180);
-    const lon1 = longitude * (Math.PI / 180);
-    const lat2 = KAABA_LAT * (Math.PI / 180);
-    const lon2 = KAABA_LNG * (Math.PI / 180);
-
-    // Calculate Qibla direction using enhanced formula
-    const y = Math.sin(lon2 - lon1);
-    const x = Math.cos(lat1) * Math.tan(lat2) - Math.sin(lat1) * Math.cos(lon2 - lon1);
-    let qibla = Math.atan2(y, x) * (180 / Math.PI);
-    
-    // Normalize to 0-360
-    qibla = (qibla < 0) ? qibla + 360 : qibla;
-    return qibla;
-  };
-
   const getQiblaAngle = useCallback(() => {
-    return ((qiblaDirection - magnetometer + 360) % 360);
-  }, [qiblaDirection, magnetometer]);
+    if (!location) return 0;
   
+    const declination = getMagneticDeclination(
+      location.coords.latitude,
+      location.coords.longitude
+    );
+    
+    const trueHeading = (magnetometer + declination + 360) % 360;
+    let qiblaAngle = qiblaDirection - trueHeading;
+    qiblaAngle = ((qiblaAngle + 180) % 360) - 180;
+    
+    return Math.abs(qiblaAngle);
+  }, [qiblaDirection, magnetometer, location]);
 
   const getIndicatorColor = () => {
-    const angle = Math.abs(getQiblaAngle() - 180);
-    if (angle <= 5) return '#4CAF50'; // Green when very accurate
-    if (angle <= 15) return '#FFC107'; // Yellow when close
-    return '#F44336'; // Red when far
+    const angle = getQiblaAngle();
+    if (angle <= 5) return '#4CAF50';
+    if (angle <= 15) return '#FFC107';
+    return '#F44336';
   };
 
   const getAccuracyText = () => {
-    const angle = Math.abs(getQiblaAngle() - 180);
-    if (angle <= 5) return 'Accurate';
-    if (angle <= 15) return 'Close';
-    return 'Far';
+    const angle = getQiblaAngle();
+    if (angle <= 5) return 'Sangat Akurat';
+    if (angle <= 15) return 'Cukup Akurat';
+    return 'Kurang Akurat';
   };
 
   return (
@@ -166,76 +147,76 @@ export default function QiblaCompass() {
       style={styles.container}
     >
       <ScrollView 
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
-        <MaterialCommunityIcons name="compass-rose" size={32} color="white" />
-        <Text style={styles.title}>Qibla Finder</Text>
-      </View>
-
-      {errorMsg ? (
-        <View style={styles.errorContainer}>
-          <MaterialCommunityIcons name="alert" size={48} color="#ff6b6b" />
-          <Text style={styles.error}>{errorMsg}</Text>
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <MaterialCommunityIcons name="compass-rose" size={32} color="white" />
+          <Text style={styles.title}>Qibla Finder</Text>
         </View>
-      ) : (
-        <>
-          {!isFlat && (
-            <Text style={styles.warning}>Please hold device flat</Text>
-          )}
-          
-          <View style={styles.compassContainer}>
-            <View style={[styles.compass, { transform: [{ rotate: `${-magnetometer}deg` }] }]}>
-              <View 
-                style={[
-                  styles.qiblaIndicator, 
-                  { 
-                    transform: [{ rotate: `${qiblaDirection}deg` }],
-                    borderBottomColor: getIndicatorColor()
-                  }
-                ]} 
-              />
-              <View 
-                style={[
-                  styles.circleEdge,
-                  { transform: [{ rotate: `${qiblaDirection}deg` }] }
-                ]}
-              >
-                <Image 
-                  source={require('@/assets/images/kaaba.png')}
-                  style={styles.kaabaIcon}
-                />
-              </View>
-              <View style={styles.compassRose}>
-                <Text style={[styles.direction, styles.north]}>N</Text>
-                <Text style={[styles.direction, styles.east]}>E</Text>
-                <Text style={[styles.direction, styles.south]}>S</Text>
-                <Text style={[styles.direction, styles.west]}>W</Text>
-              </View>
-            </View>
+
+        {errorMsg ? (
+          <View style={styles.errorContainer}>
+            <MaterialCommunityIcons name="alert" size={48} color="#ff6b6b" />
+            <Text style={styles.error}>{errorMsg}</Text>
           </View>
-
-          <View style={styles.infoContainer}>
-            <View style={styles.infoCard}>
-              <MaterialCommunityIcons name="compass" size={24} color={getIndicatorColor()} />
-              <Text style={styles.degrees}>
-                Qibla: {getQiblaAngle().toFixed(1)}° ({getAccuracyText()})
-              </Text>
+        ) : (
+          <>
+            {!isFlat && (
+              <Text style={styles.warning}>Please hold device flat</Text>
+            )}
+            
+            <View style={styles.compassContainer}>
+              <View style={[styles.compass, { transform: [{ rotate: `${-magnetometer}deg` }] }]}>
+                <View 
+                  style={[
+                    styles.qiblaIndicator, 
+                    { 
+                      transform: [{ rotate: `${qiblaDirection}deg` }],
+                      borderBottomColor: getIndicatorColor()
+                    }
+                  ]} 
+                />
+                <View 
+                  style={[
+                    styles.circleEdge,
+                    { transform: [{ rotate: `${qiblaDirection}deg` }] }
+                  ]}
+                >
+                  <Image 
+                    source={require('@/assets/images/kaaba.png')}
+                    style={styles.kaabaIcon}
+                  />
+                </View>
+                <View style={styles.compassRose}>
+                  <Text style={[styles.direction, styles.north]}>N</Text>
+                  <Text style={[styles.direction, styles.east]}>E</Text>
+                  <Text style={[styles.direction, styles.south]}>S</Text>
+                  <Text style={[styles.direction, styles.west]}>W</Text>
+                </View>
+              </View>
             </View>
 
-            {location && (
+            <View style={styles.infoContainer}>
               <View style={styles.infoCard}>
-                <MaterialCommunityIcons name="crosshairs-gps" size={24} color="#2196F3" />
-                <Text style={styles.location}>
-                  {location.coords.latitude.toFixed(4)}°N, {location.coords.longitude.toFixed(4)}°E
+                <MaterialCommunityIcons name="compass" size={24} color={getIndicatorColor()} />
+                <Text style={styles.degrees}>
+                  Qibla: {getQiblaAngle().toFixed(1)}° ({getAccuracyText()})
                 </Text>
               </View>
-            )}
-          </View>
-          <BannerAds />
-        </>
-      )}
+
+              {location && (
+                <View style={styles.infoCard}>
+                  <MaterialCommunityIcons name="crosshairs-gps" size={24} color="#2196F3" />
+                  <Text style={styles.location}>
+                    {location.coords.latitude.toFixed(4)}°N, {location.coords.longitude.toFixed(4)}°E
+                  </Text>
+                </View>
+              )}
+            </View>
+            <BannerAds />
+          </>
+        )}
       </ScrollView>
     </LinearGradient>
   );
@@ -365,7 +346,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     position: 'absolute',
-    bottom: 0, // Position at tip of indicator
+    bottom: 0,
     left: 122,
     resizeMode: 'contain',
     transform: [{ scaleY: -1 }],
@@ -374,5 +355,4 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 20
   },
-
 });

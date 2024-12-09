@@ -1,5 +1,12 @@
 import { Platform } from 'react-native';
-import { TestIds, InterstitialAd, AppOpenAd, BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
+import { 
+  TestIds, 
+  InterstitialAd, 
+  AppOpenAd, 
+  BannerAd, 
+  BannerAdSize,
+  AdEventType
+} from 'react-native-google-mobile-ads';
 
 const GIST_URL = 'https://gist.githubusercontent.com/3snanugraha/e4627fc2e6b224921dbaf87d1bc3c0fb/raw';
 
@@ -37,7 +44,7 @@ export const fetchAdConfig = async () => {
 export const initializeAds = async () => {
   const adConfig = await fetchAdConfig();
   if (!adConfig || !adConfig.enabled) {
-    console.log('Ads are disabled');
+    // console.log('Ads are disabled');
     return null;
   }
 
@@ -45,7 +52,6 @@ export const initializeAds = async () => {
   const testMode = adConfig.testMode;
   const adUnits = adConfig.adUnits[platform];
 
-  // Periksa jika unit ads diaktifkan
   const adIds = {
     banner: adUnits.banner.enabled === "true" 
       ? (testMode ? TestIds.BANNER : adUnits.banner.unitId)
@@ -70,26 +76,62 @@ let adIds: {
 export const setupAds = async () => {
   adIds = await initializeAds();
   if (!adIds) {
-    console.log('Ad initialization failed or ads are disabled.');
+    // console.log('Ad initialization failed or ads are disabled.');
     return;
   }
-  console.log('Ads initialized with IDs:', adIds);
+  // console.log('Ads initialized with IDs:', adIds);
 };
 
 export const interstitialAd = () => {
-  if (!adIds?.interstitial) return null;
-  return InterstitialAd.createForAdRequest(adIds.interstitial, {
+  if (!adIds?.interstitial) {
+    // console.log('Interstitial ad ID not available');
+    return null;
+  }
+  const interstitial = InterstitialAd.createForAdRequest(adIds.interstitial, {
     keywords: ['halal', 'islamic'],
     requestNonPersonalizedAdsOnly: true,
   });
+  
+  interstitial.addAdEventListener(AdEventType.LOADED, () => {
+    // console.log('Interstitial ad loaded successfully');
+  });
+
+  interstitial.addAdEventListener(AdEventType.ERROR, (error) => {
+    // console.log('Interstitial ad error:', error);
+  });
+
+  interstitial.addAdEventListener(AdEventType.CLOSED, () => {
+    // console.log('Interstitial ad closed');
+    interstitial.load();
+  });
+  
+  return interstitial;
 };
 
 export const appOpenAd = () => {
-  if (!adIds?.appOpen) return null;
-  return AppOpenAd.createForAdRequest(adIds.appOpen, {
+  if (!adIds?.appOpen) {
+    // console.log('App open ad ID not available');
+    return null;
+  }
+  const appOpen = AppOpenAd.createForAdRequest(adIds.appOpen, {
     keywords: ['halal', 'islamic'],
     requestNonPersonalizedAdsOnly: true,
   });
+
+  appOpen.addAdEventListener(AdEventType.LOADED, () => {
+    // console.log('App open ad loaded successfully');
+  });
+
+  appOpen.addAdEventListener(AdEventType.ERROR, (error) => {
+    // console.log('App open ad error:', error);
+  });
+
+  appOpen.addAdEventListener(AdEventType.CLOSED, () => {
+    // console.log('App open ad closed');
+    appOpen.load();
+  });
+
+  return appOpen;
 };
 
 export const BannerAdComponent = () => {
@@ -110,10 +152,8 @@ export const BannerAdComponent = () => {
   );
 };
 
-// Cleanup function
 export const cleanupAds = () => {
   adIds = null;
 };
 
-// Initialize ads
 setupAds();

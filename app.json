@@ -10,18 +10,37 @@
       "resizeMode": "contain",
       "backgroundColor": "#1a237e"
     },
-    "scheme": "myapp",
+    "scheme": "qiblafinder",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.artadev.qiblafinder",
+      "buildNumber": "1.0.0"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/kaaba_bg.png",
         "backgroundColor": "#1a237e"
       },
-      "package": "com.x3snanugrahaa.qiblafinder"
+      "package": "com.artadev.qiblafinder",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "enableProguardInReleaseBuilds": true,
+      "enableShrinkResources": true,
+      "enableR8": true,
+      "extraProguardRules": "-keep class com.artadev.qiblafinder.** { *; }",
+      "buildTypes": {
+        "release": {
+          "crunchPngs": true,
+          "minifyEnabled": true
+        }
+      }
     },
     "web": {
       "bundler": "metro",
@@ -36,10 +55,21 @@
           "androidAppId": "ca-app-pub-2147056952925982~7010556129",
           "iosAppId": "ca-app-pub-2147056952925982~7010556129"
         }
-      ]
+      ],
+      "expo-sensors",
+      "expo-location"
     ],
     "experiments": {
-      "typedRoutes": true
-    }
+      "typedRoutes": true,
+      "tsconfigPaths": true
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "owner": "artadev",
+    "developmentClient": {
+      "silentLaunch": true
+    },
+    "jsEngine": "hermes"
   }
 }
